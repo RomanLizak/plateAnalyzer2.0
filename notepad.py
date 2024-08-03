@@ -25,7 +25,7 @@ class NotepadApp:
         #object holds information about its name and stores all data
         self.tabs = {}
 
-    def add_tab(self):
+    def add_tab(self,event=None):
         # add open file dialog
         file_path = filedialog.askopenfilename()
         
@@ -43,29 +43,20 @@ class NotepadApp:
 
             # force update to ensure the tab is fully rendered
             self.root.update_idletasks()
-                        
+                              
             
-
+    #add the first tab to the notebook
     def add_plus_tab(self):
         frame = tk.Frame(self.notebook)
         self.notebook.add(frame, text=self.plus_tab_label)
 
-    def create_tab_label(self, tab_id, title):
-        # Create a frame to hold text and close button
-        tab_frame = tk.Frame(self.notebook)
-        tab_label = tk.Label(tab_frame, text=title, bg='lightgrey', padx=10)
-        tab_label.pack(side=tk.LEFT, fill=tk.X, expand=True)
-
-        # Update the tab with the new frame
-        self.notebook.tab(tab_id, text="", image="", compound="none")  # Remove old text/image
-        self.notebook.tab(tab_id, text=title)
-
-    def on_tab_right_click(self, event):
+    def on_tab_right_click(self, event=None):
         try:
             tab_id = self.notebook.index(f"@{event.x},{event.y}")
         except tk.TclError:
             return
-
+        
+        #check if the tab is equal to + sign
         tab_text = self.notebook.tab(tab_id, option="text")
 
         if tab_text != self.plus_tab_label:
@@ -78,6 +69,7 @@ class NotepadApp:
         except tk.TclError:
             return
 
+        #check if the tab is equal to + sign
         tab_text = self.notebook.tab(tab_id, option="text")
 
         if tab_text == self.plus_tab_label:
@@ -85,10 +77,17 @@ class NotepadApp:
             self.notebook.select(len(self.notebook.tabs()) - 2)
 
     def close_tab(self, tab_id):
-        self.notebook.forget(tab_id)
+        tab_index = self.notebook.index(tab_id)
+        frame = self.notebook.nametowidget(tab_id)
+        frame.destroy()
 
-        del self.tabs[self.tabs[::][0] == self.notebook.tab(tab_id, option="text")]
+        #never select '+' tab
+        if int(tab_index) > 0:
+            self.notebook.select(tab_index-1)
         
+    def close_all_tabs(self,event=None):
+        for tab in self.notebook.tabs():
+            self.close_this_tab(tab)
 
     def create_menu(self, root):
         # Create a menu
@@ -96,18 +95,18 @@ class NotepadApp:
 
         # Create a submenu Menu
         file_menu = Menu(menu_bar, tearoff=False)
-        file_menu.add_command(label="Open...", accelerator="            Ctrl + O", command=None)
-        file_menu.add_command(label="Save", accelerator="            Ctrl + S", command=None)
-        file_menu.add_command(label="Save as...", accelerator="Ctrl + Shift + S", command=None)
+        file_menu.add_command(label="Open...", accelerator="            Ctrl + O", command=self.add_tab)
+        file_menu.add_command(label="Save", accelerator="            Ctrl + S", command=self.save)
+        file_menu.add_command(label="Save as...", accelerator="            Ctrl + Shift + S", command=self.save_as)
         file_menu.add_separator()
-        file_menu.add_command(label="Close this tab", command=None)
-        file_menu.add_command(label="Close all tabs", accelerator="            Ctrl + Q", command=None)
+        file_menu.add_command(label="Close this tab", accelerator="            Ctrl + Q",command=self.on_tab_right_click)
+        file_menu.add_command(label="Close all tabs", accelerator="            Ctrl + Shift + Q", command=self.close_all_tabs)
         file_menu.add_separator()
-        file_menu.add_command(label="Exit", accelerator="            Ctrl + E", command=None)
+        file_menu.add_command(label="Exit", accelerator="            Ctrl + E", command=self.exit_app)
 
         #Create a submenu Help
         help_menu = Menu(menu_bar, tearoff=False)
-        help_menu.add_command(label="About...", command=None)
+        help_menu.add_command(label="Help", accelerator="Ctrl + H", command=self.get_help)
 
         # Add the submenu to the menu
         menu_bar.add_cascade(label="Menu", menu=file_menu)
@@ -117,3 +116,29 @@ class NotepadApp:
         # Configure the window to use the menu
         root.config(menu=menu_bar)
 
+        self.root.bind('<Control-o>', self.add_tab)
+        self.root.bind('<Control-s>', self.save)
+        self.root.bind('<Control-Shift-S>', self.save_as)
+        self.root.bind('<Control-q>', self.close_this_tab)
+        self.root.bind('<Control-Shift-Q>', self.close_all_tabs)
+        self.root.bind('<Control-e>', self.exit_app)
+        self.root.bind('<Control-h>', self.get_help)
+        
+    def close_this_tab(self, event=None):
+        tab_id = self.notebook.select()
+        tab_text = self.notebook.tab(tab_id, option="text")
+        if tab_text != self.plus_tab_label:
+            self.close_tab(tab_id)
+
+    def save(self, event=None):
+        print('Save')
+    
+    def save_as(self, event=None):
+        print('Save as')
+    
+    def get_help(self,event=None):
+        print('help')
+
+
+    def exit_app(self,event=None):
+        self.root.destroy()
