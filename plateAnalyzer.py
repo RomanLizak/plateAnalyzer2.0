@@ -19,13 +19,15 @@ class PlateAnalyzer:
             'frame_plate_info': None,
             'frame_job_info': None,
             'frame_data_selection': None,
+            'frame_figure_handle': None,
             'frame_figure_selection': None,
             'frame_ax_settings': None,
             'frame_preview': None,
             'frame_template':None
         }
+        self.selected_data = None
 
-
+    
     @classmethod
     def initialize_csv(cls, file_path):
         # Read the CSV file into a pandas DataFrame
