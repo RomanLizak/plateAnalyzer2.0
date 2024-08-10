@@ -11,6 +11,27 @@ class PlateAnalyzer:
     ROW = 0
     COL = 1
 
+    def __init__(self, file_path):
+        self.name, self.df_plate, self.df_job, self.df_data = self.initialize_csv(file_path)
+        self.frames = {
+            'frame_root': None,
+            'frame_main': None,
+            'frame_plate_info': None,
+            'frame_job_info': None,
+            'frame_data_selection': None,
+            'frame_figure_handle': None,
+            'frame_figure_selection': None,
+            'frame_plot_settings': None,
+            # holds each frame in frame_plot_settings
+            'frame_plot_settings_inner': {},
+            'frame_preview': None,
+            'frame_template':None
+        }
+        
+        self.selected_data = None
+        self.figures = []
+
+    
     @classmethod
     def initialize_csv(cls, file_path):
         # Read the CSV file into a pandas DataFrame
@@ -42,7 +63,9 @@ class PlateAnalyzer:
 
         #read the plate table
         df_plate = df_data.iloc[cls.plate_table_start[cls.ROW]:cls.plate_table_end[cls.ROW],cls.plate_table_start[cls.COL]:(cls.plate_table_end[cls.COL])].values.tolist()
-
+        df_plate = [row for row in df_plate if not pd.isnull(row[1])]
+        
+        
         #read from df_plate number of cycles
         for row in df_plate:
             name, value = row
