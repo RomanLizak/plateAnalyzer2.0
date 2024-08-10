@@ -6,9 +6,12 @@ import os
 import psutil
 
 from plateAnalyzer import PlateAnalyzer
+from myFigure import AddFigure 
 
 class NotepadApp:
     plus_tab_label = "   +   "
+    
+
 
     def __init__(self, root):
         self.root = root
@@ -18,9 +21,11 @@ class NotepadApp:
         self.notebook = ttk.Notebook(root)
         self.notebook.pack(expand=True, fill='both')
 
+        self.notebook_figures_selection = None
+
         self.add_plus_tab()
         
-        self.notebook.bind("<Button-1>", self.on_tab_click)
+        self.notebook.bind("<Button-1>", lambda event: self.on_tab_click('notebook_main', event))
         self.notebook.bind("<Button-3>", lambda event: self.on_tab_right_click('notebook_main', event))
 
         self.create_menu(root)
@@ -42,7 +47,7 @@ class NotepadApp:
 
         max_y = max(self.selected_object.frames['frame_plate_info'].winfo_y(),
                     self.selected_object.frames['frame_job_info'].winfo_y(),
-                    self.selected_object.frames['frame_ax_settings'].winfo_y() + self.selected_object.frames['frame_ax_settings'].winfo_height() + 20)
+                    self.selected_object.frames['frame_plot_settings'].winfo_y() + self.selected_object.frames['frame_plot_settings'].winfo_height() + 20)
         
         # Bind the scroll 
         if canvas.winfo_width() >= max_x:#self.notebook.winfo_width():
@@ -115,8 +120,6 @@ class NotepadApp:
             self.add_frame_preview(object,container)
             self.add_frame_template(object,container)
             
-
-                                       
     def add_frame_plate_info(self, object, parent_frame):
         #create a frame for the plate info
         frame_plate_info = LabelFrame(parent_frame, text="Plate Info", width=475, height=200)
@@ -274,7 +277,7 @@ class NotepadApp:
 
         Button(frame_figure_handle, text='New figure\n--->', command=lambda :self.add_new_figure(object)).grid(row=1, column=0, pady=10)
         Button(frame_figure_handle, text='Delete figure\n<---', command=None).grid(row=1, column=1, pady=10, sticky='w')
-        #Button(parent_frame, text='Plot', command=None).grid(row=4, column=4, pady=10, padx=10, sticky='news')
+        #Button(frame_figure_handle, text='Plot', command=None).grid(row=2, column=1, pady=10, padx=10, sticky='news')
 
         Label(frame_figure_handle, text='Figure name:  ').grid(row=0, column=0, sticky='', pady=10)
         figure_entry_name = Entry(frame_figure_handle, width=50)
@@ -282,21 +285,19 @@ class NotepadApp:
         self.figure_entry_name = figure_entry_name
 
     def add_frame_figure_selection(self, object, parent_frame):
-        frame_figure_selection = (LabelFrame(parent_frame, text='Figures', width=1170, height=102))
+        frame_figure_selection = LabelFrame(parent_frame, text='Figures', width=1170, height=102)
         frame_figure_selection.grid(row=1, column=11, columnspan=12, sticky='news', padx=10, pady=10)
         frame_figure_selection.grid_propagate(flag=False)
-        #frame_figure_selection.grid_rowconfigure([0,1,2,3,4,5,6], minsize=21)
-        #frame_figure_selection.grid_columnconfigure([0,1,2,3,4], minsize=100)
         object.frames['frame_figure_selection'] = frame_figure_selection
         
         self.notebook_figures_selection = ttk.Notebook(frame_figure_selection)
-        self.notebook_figures_selection.grid(row=0, column=0, sticky='nsew')
+        self.notebook_figures_selection.grid(row=0, column=0, sticky='news')
         frame_figure_selection.grid_rowconfigure(0, weight=1)
         frame_figure_selection.grid_columnconfigure(0, weight=1)
 
-        #self.notebook_figures_selection.bind("<Button-1>", self.on_tab_click)
-        self.notebook_figures_selection.bind("<Button-3>", lambda event:self.on_tab_right_click('notebook_figures_selection',event))
-    
+        self.notebook_figures_selection.bind("<Button-1>", lambda event: self.on_tab_click('notebook_figures_selection', event))
+        self.notebook_figures_selection.bind("<Button-3>", lambda event: self.on_tab_right_click('notebook_figures_selection',event))
+        
         self.root.update_idletasks()
 
     def get_memory_usage(self):
@@ -305,13 +306,14 @@ class NotepadApp:
         print(f"Memory usage: {process.memory_info().rss / 1024 / 1024} MB") # in bytes process.memory_info().rss / 1024 / 1024
     
     def add_frame_plot_settings(self, object, parent_frame):
-        frame_ax_settings = LabelFrame(parent_frame, text='Plot settings', height=350, width=500)
-        frame_ax_settings.grid(row=2, column=21, columnspan=2, rowspan=6, sticky='nw', padx=10, pady=10)
-        frame_ax_settings.grid_propagate(flag=False)
-        frame_ax_settings.grid_rowconfigure(0, weight=1)
-        frame_ax_settings.grid_columnconfigure(0, weight=1)
-        object.frames['frame_ax_settings'] = frame_ax_settings
-
+        frame_plot_settings = LabelFrame(parent_frame, text='Plot settings', height=350, width=450)
+        frame_plot_settings.grid(row=2, column=21, columnspan=2, rowspan=6, sticky='news', padx=10, pady=10)
+        frame_plot_settings.grid_propagate(flag=False)
+        frame_plot_settings.grid_rowconfigure(0, weight=1)
+        frame_plot_settings.grid_columnconfigure(0, weight=1)
+        
+        
+        object.frames['frame_plot_settings'] = frame_plot_settings
         
         self.root.update_idletasks()
 
@@ -335,23 +337,134 @@ class NotepadApp:
 
     def add_new_figure(self, object):
         new_figure_name = self.figure_entry_name.get()
-        
-        frame = Frame(self.notebook_figures_selection)
-        self.notebook_figures_selection.add(frame, text=new_figure_name)
+        if new_figure_name not in AddFigure.get_all_figure_name() and new_figure_name != '':
+            new_figure = AddFigure(new_figure_name)
+            frame = Frame(self.notebook_figures_selection)
+            self.notebook_figures_selection.add(frame, text=new_figure_name)
+            self.notebook_figures_selection.select(frame)
 
-        row_idx, col_idx = 0, 0
-        for index, var in enumerate(object.selected_data):
-            if var.get() == 1:
-                item = '  ' + self.selected_object.df_data.columns[index] + '  '
-                Label(frame, text=item).grid(row=row_idx, column=col_idx, sticky='w', padx=10, pady=5)
-                row_idx += 1
-                if row_idx >= 2:
-                    row_idx = 0
-                    col_idx += 1
+            # create labels of data we want to plot
+            row_idx, col_idx = 0, 0
+            for index, var in enumerate(object.selected_data):
+                if var.get() == 1:
+                    item = '  ' + self.selected_object.df_data.columns[index] + '  '
+                    Label(frame, text=item).grid(row=row_idx, column=col_idx, sticky='w', padx=10, pady=5)
+                    row_idx += 1
+                    if row_idx >= 2:
+                        row_idx = 0
+                        col_idx += 1
 
+            # adding data to the object
+            for index, checked_box in enumerate(object.selected_data):
+                if int(checked_box.get()) == 1:
+                    axis_name = object.df_data.columns[index]
+                    new_figure.add_ax(object.df_data.columns[index], self.selected_object.df_data[axis_name])
         
+            self.create_separated_frame(object, new_figure)
 
         self.root.update_idletasks()
+
+    def create_separated_frame(self, object, new_figure):
+        frame_plot_settings_inner = Frame(object.frames['frame_plot_settings'])
+        frame_plot_settings_inner.grid(row=0, column=0, sticky='news')
+        frame_plot_settings_inner.grid_propagate(flag=False)
+        frame_plot_settings_inner.grid_columnconfigure(0, weight=1)
+        object.frames['frame_plot_settings_inner'][new_figure.name] = frame_plot_settings_inner
+        
+        figure_name_label = Label(frame_plot_settings_inner, text='Figure name')
+        figure_name_label.grid(row=0, column=0, sticky='w', padx=10, pady=10)
+
+        figure_name_entry = Entry(frame_plot_settings_inner, width=55)
+        figure_name_entry.grid(row=0, column=1, sticky='e', padx=10, pady=10)
+        figure_name_entry.insert(0,new_figure.name)
+
+        notebook = ttk.Notebook(frame_plot_settings_inner)
+        notebook.grid(row=1, column=0, columnspan=2, sticky='news')
+        
+        for ax_number, ax in enumerate(new_figure.axes):
+            tab = Frame(notebook)
+            name = ax['name']
+            index = name.find('[')-1  # Find the index of the first '['
+            name = name[:index] # Name without brackets
+            
+            
+            notebook.add(tab, text=name)
+            print(type(ax['name']))
+            
+            # dict of assigned variables
+            dict_of_widgets = {}
+
+            axis_name_label = Label(tab, text=ax['name'])
+            axis_name_label.grid(row=0, column=0, columnspan=2, sticky='ew', padx=10, pady=10)
+
+            axis_label_label = Label(tab, text='Axis label')
+            axis_label_label.grid(row=1, column=0, padx=10, pady=10)
+
+            axis_label_entry = Entry(tab)
+            axis_label_entry.grid(row=1, column=1, padx=10, pady=10)
+            axis_label_entry.insert(0,ax['name']) #default name of the axis label
+            dict_of_widgets['axis_label'] = axis_label_entry
+
+            legend_label_label = Label(tab, text='Legend label')
+            legend_label_label.grid(row=2, column=0, padx=10, pady=10)
+
+            
+            legend_label_entry = Entry(tab)
+            legend_label_entry.grid(row=2, column=1, padx=10, pady=10)
+            legend_label_entry.insert(0,ax['name']) #default name of the legend label
+            dict_of_widgets['legend_label'] = legend_label_entry
+
+
+            x_range_label = Label(tab, text='X range')
+            x_range_label.grid(row=3, column=0, padx=10, pady=10)
+
+            
+            x_range_entry = Entry(tab)
+            x_range_entry.grid(row=3, column=1, padx=10, pady=10)
+            dict_of_widgets['x_range'] = x_range_entry
+
+            y_limit_label = Label(tab, text='Y range')
+            y_limit_label.grid(row=4, column=0, padx=10, pady=10)
+
+            
+            y_range_entry = Entry(tab)
+            y_range_entry.grid(row=4, column=1, padx=10, pady=10)
+            dict_of_widgets['y_range'] = y_range_entry
+
+            y_ax_number_label = Label(tab, text='Y axis position')
+            y_ax_number_label.grid(row=5, column=0, padx=10, pady=10)
+
+            y_ax_number_combobox = ttk.Combobox(tab, values=[i for i in range(0,8)])
+            y_ax_number_combobox.grid(row=5, column=1, padx=10, pady=10)
+            y_ax_number_combobox.set(ax_number)
+            dict_of_widgets['y_ax_number'] = y_ax_number_combobox
+
+            color_label = Label(tab, text='Color')
+            color_label.grid(row=6, column=0, padx=10, pady=10)
+
+            color_combobox = ttk.Combobox(tab, values=new_figure.color_list)
+            color_combobox.grid(row=6, column=1, padx=10, pady=10)
+            color_combobox.set(new_figure.color_list[ax_number])
+            dict_of_widgets['color'] = color_combobox
+
+            line_width_label = Label(tab, text='Line width')
+            line_width_label.grid(row=7, column=0, padx=10, pady=10)
+
+
+            line_width_entry = Entry(tab)
+            line_width_entry.grid(row=7, column=1, padx=10, pady=10)
+            line_width_entry.insert(0,1)
+            dict_of_widgets['line_width'] = line_width_entry
+            
+
+            new_figure.plot_settings[ax['name']] =  dict_of_widgets
+
+        #print(object.frames['frame_plot_settings_inner'].items())
+        for key, value in new_figure.plot_settings.items():
+            print(key)
+            for key1, value1 in value.items():
+                print('   ' + key1, value1)
+            print('\n\n')
 
     #add the first tab to the notebook
     def add_plus_tab(self):
@@ -390,6 +503,8 @@ class NotepadApp:
 
             if tab_text != self.plus_tab_label:
                 self.close_tab(tab_id,source)
+
+            print('notebook_main')
         elif source == 'notebook_figures_selection':
             try:
                 print('right click')
@@ -398,25 +513,38 @@ class NotepadApp:
             except tk.TclError:
                 return
             
-            print('wefwsfwsfrfrsfgrgrsegeg')
+            print('notebook_figure_selection')
             self.close_tab(tab_id,source)
         else:
             print('wefwsfwsfrfrsfgrgrsegeg')
 
-    def on_tab_click(self, event):
-        try:
-            tab_id = self.notebook.index(f"@{event.x},{event.y}")
-        except tk.TclError:
-            return
+    def on_tab_click(self, source, event=None):
+        if source == 'notebook_main':
+            try:
+                tab_id = self.notebook.index(f"@{event.x},{event.y}")
+            except tk.TclError:
+                return
 
-        #check if the tab is equal to + sign
-        tab_text = self.notebook.tab(tab_id, option="text")
+            #check if the tab is equal to + sign
+            tab_text = self.notebook.tab(tab_id, option="text")
 
-        if tab_text == self.plus_tab_label:
-            self.add_tab()
-            self.notebook.select(len(self.notebook.tabs()) - 2)
+            if tab_text == self.plus_tab_label:
+                self.add_tab()
+                self.notebook.select(len(self.notebook.tabs()) - 2)
+            else:
+                self.selected_object = self.tabs[tab_text.replace(" ", "")]
+        elif source == 'notebook_figures_selection':
+            try:
+                tab_id = self.notebook_figures_selection.index(f"@{event.x},{event.y}")
+            except tk.TclError:
+                return
+            print(tab_id)
+            tab_text = self.notebook_figures_selection.tab(tab_id, option="text")
+            print(tab_text)
+            self.selected_object.frames['frame_plot_settings_inner'][tab_text].tkraise()
         else:
-            self.selected_object = self.tabs[tab_text.replace(" ", "")]
+            return
+    
 
     def close_tab(self, tab_id, source=None):
         if source == 'notebook_main':
