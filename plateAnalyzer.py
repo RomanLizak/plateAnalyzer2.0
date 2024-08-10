@@ -21,11 +21,15 @@ class PlateAnalyzer:
             'frame_data_selection': None,
             'frame_figure_handle': None,
             'frame_figure_selection': None,
-            'frame_ax_settings': None,
+            'frame_plot_settings': None,
+            # holds each frame in frame_plot_settings
+            'frame_plot_settings_inner': {},
             'frame_preview': None,
             'frame_template':None
         }
+        
         self.selected_data = None
+        self.figures = []
 
     
     @classmethod
