@@ -24,11 +24,12 @@ class AddFigure():
             'y_ax_number': 1,
             'color': None,
             'line_width': 1,
+            'hide_axis': False,
             'data': data
         }
         self.axes.append(ax_dict)
 
-    def update_axis(self, name, axis_label = None, legend_label = None, x_limit=None, y_limit = None, y_ax_number=None, color = None, line_width=None):
+    def update_axis(self, name, axis_label = None, legend_label = None, x_limit=None, y_limit = None, y_ax_number=None, color = None, line_width=None, hide_axis=None):
 
         for ax in self.axes:
             for ax in self.axes:
@@ -47,6 +48,8 @@ class AddFigure():
                         ax['color'] = color
                     if line_width is not None:
                         ax['line_width'] = line_width
+                    if line_width is not None:
+                        ax['hide_axis'] = hide_axis
                     break
 
     def get_info(self):
@@ -58,7 +61,15 @@ class AddFigure():
     def sort_by_y_axis_number(self):
         self.axes.sort(key=lambda x: x['y_ax_number'])
 
-    def show_figure(self, cls, plot=True):
+    def show_figure(self, preview=False):
+        
+        #self.axes.sort(key=lambda x: x['y_ax_number'])
+        
+        print(self.name)
+        for ax in self.axes:
+            print(ax['name'])
+        
+        return
         plt.ioff()  # Turn off interactive mode
         plt.close('all')  # Close all existing figures
         fig, ax = plt.subplots()
