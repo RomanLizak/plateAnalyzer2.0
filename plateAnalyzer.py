@@ -29,7 +29,9 @@ class PlateAnalyzer:
         }
         
         self.selected_data = None
-        self.figures = []
+        self.figures = {}
+        self.figure_entry_name = None
+        self.notebook_figure_selection = None
 
     
     @classmethod

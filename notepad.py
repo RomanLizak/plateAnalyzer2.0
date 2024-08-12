@@ -4,6 +4,7 @@ from tkinter import ttk
 from tkinter import filedialog
 import os
 import psutil
+import gc
 
 from plateAnalyzer import PlateAnalyzer
 from myFigure import AddFigure 
@@ -11,8 +12,6 @@ from myFigure import AddFigure
 class NotepadApp:
     plus_tab_label = "   +   "
     
-
-
     def __init__(self, root):
         self.root = root
         self.root.title("Plate Analyzer 2.0")
@@ -21,7 +20,7 @@ class NotepadApp:
         self.notebook = ttk.Notebook(root)
         self.notebook.pack(expand=True, fill='both')
 
-        self.notebook_figures_selection = None
+        #self.notebook_figures_selection = None
 
         self.add_plus_tab()
         
@@ -33,7 +32,7 @@ class NotepadApp:
         #dictionary to keep track of tabs - names : object
         #object holds information about its name and stores all data
         self.tabs = {}
-        self.selected_object = None
+        self.selected_object_plate = None
 
     def on_frame_configure(self,canvas):
         canvas.configure(scrollregion=canvas.bbox("all"))
@@ -41,15 +40,15 @@ class NotepadApp:
     def enable_scrolling(self, canvas, event=None):
         #get the position of the most bottom most right frame
         #get the maximum values of all the frames
-        max_x = max(self.selected_object.frames['frame_plate_info'].winfo_x(),
-                    self.selected_object.frames['frame_job_info'].winfo_x(),
-                    self.selected_object.frames['frame_preview'].winfo_x() + self.selected_object.frames['frame_preview'].winfo_width() + 20)
+        max_x = max(self.selected_object_plate.frames['frame_plate_info'].winfo_x(),
+                    self.selected_object_plate.frames['frame_job_info'].winfo_x(),
+                    self.selected_object_plate.frames['frame_preview'].winfo_x() + self.selected_object_plate.frames['frame_preview'].winfo_width() + 20)
 
-        max_y = max(self.selected_object.frames['frame_plate_info'].winfo_y(),
-                    self.selected_object.frames['frame_job_info'].winfo_y(),
-                    self.selected_object.frames['frame_plot_settings'].winfo_y() + self.selected_object.frames['frame_plot_settings'].winfo_height() + 20)
+        max_y = max(self.selected_object_plate.frames['frame_plate_info'].winfo_y(),
+                    self.selected_object_plate.frames['frame_job_info'].winfo_y(),
+                    self.selected_object_plate.frames['frame_plot_settings'].winfo_y() + self.selected_object_plate.frames['frame_plot_settings'].winfo_height() + 20)
         
-        # Bind the scroll 
+        # Bind the scroll
         if canvas.winfo_width() >= max_x:#self.notebook.winfo_width():
             canvas.unbind_all("<Shift-MouseWheel>")
         else:
@@ -70,18 +69,19 @@ class NotepadApp:
         file_path = filedialog.askopenfilename()
         
         if file_path:
-            # delete the suffix from the file path and save the rest to self.title
-            #title = '  ' + os.path.splitext(os.path.basename(file_path))[0] + '  '
+            object_plate = PlateAnalyzer(file_path)
+            if object_plate.name in self.tabs.keys():
+                del object_plate
+                return
             
-            object = PlateAnalyzer(file_path)
-            self.selected_object = object
-            self.tabs[object.name] = object
-            title = '  ' + object.name + '  '
+            self.selected_object_plate = object_plate
+            self.tabs[object_plate.name] = object_plate
+            title = '  ' + object_plate.name + '  '
 
             # create a frame for the new tab
             frame_main = tk.Frame(self.notebook)
             self.notebook.insert(len(self.notebook.tabs()) - 1, frame_main, text=title)
-            object.frames['frame_root'] = frame_main
+            object_plate.frames['frame_root'] = frame_main
 
             # Create a Canvas widget
             canvas = Canvas(frame_main) 
@@ -111,25 +111,25 @@ class NotepadApp:
             canvas.config(xscrollcommand=h_scrollbar.set, yscrollcommand=v_scrollbar.set)
 
             # Add frames to the tab
-            self.add_frame_plate_info(object,container)
-            self.add_frame_job_info(object,container)
-            self.add_frame_data_selection(object,container)
-            self.add_frame_figure_handle(object,container)
-            self.add_frame_figure_selection(object,container)
-            self.add_frame_plot_settings(object,container)
-            self.add_frame_preview(object,container)
-            self.add_frame_template(object,container)
+            self.add_frame_plate_info(object_plate,container)
+            self.add_frame_job_info(object_plate,container)
+            self.add_frame_data_selection(object_plate,container)
+            self.add_frame_figure_handle(object_plate,container)
+            self.add_frame_figure_selection(object_plate,container)
+            self.add_frame_plot_settings(object_plate,container)
+            self.add_frame_preview(object_plate,container)
+            self.add_frame_template(object_plate,container)
             
-    def add_frame_plate_info(self, object, parent_frame):
+    def add_frame_plate_info(self, object_plate, parent_frame):
         #create a frame for the plate info
         frame_plate_info = LabelFrame(parent_frame, text="Plate Info", width=475, height=200)
         frame_plate_info.grid(row=0, column=0, columnspan=10, padx=10, pady=10, sticky='nws')
         frame_plate_info.grid_propagate(flag=False)
-        object.frames['frame_plate_info'] = frame_plate_info
+        object_plate.frames['frame_plate_info'] = frame_plate_info
 
         row_idx, col_idx = 0, 0
         #fill the frame with data - plate info
-        for item in object.df_plate:
+        for item in object_plate.df_plate:
             name, value = item
             Label(frame_plate_info, text=name).grid(row=row_idx, column=col_idx, sticky='w', padx=5, pady=2)
             Label(frame_plate_info, text=value).grid(row=row_idx, column=col_idx+1, sticky='w', padx=5, pady=2)
@@ -141,14 +141,14 @@ class NotepadApp:
         # force update to ensure the tab is fully rendered
         self.root.update_idletasks()
             
-    def add_frame_job_info(self, object, parent_frame):
+    def add_frame_job_info(self, object_plate, parent_frame):
         frame_job_info = LabelFrame(parent_frame, text="Job Info")
         frame_job_info.grid(row=0, column=11, columnspan=10, padx=10, pady=10, sticky='news')
         #frame_job_info.grid_propagate(flag=False)
-        object.frames['frame_job_info'] = frame_job_info
+        object_plate.frames['frame_job_info'] = frame_job_info
 
         #get height of the frame_plate_info and create a canvas
-        height_frame_plate_info = object.frames['frame_plate_info'].winfo_height()
+        height_frame_plate_info = object_plate.frames['frame_plate_info'].winfo_height()
         canvas = Canvas(frame_job_info, width=625, height=height_frame_plate_info-20)
         canvas.grid(row=1, column=0, sticky='news')
         self.canvas_job_info = canvas
@@ -173,16 +173,16 @@ class NotepadApp:
         help_frame = Frame(frame_job_info)
         help_frame.grid(row=0, column=0, sticky='news')
         # add header
-        for col_idx, item in enumerate(object.df_job[0]):
+        for col_idx, item in enumerate(object_plate.df_job[0]):
            Label(help_frame, text=item).grid(row=0, column=col_idx, sticky='', padx=5, pady=2)
         
         col_widths = []
-        for col_idx in range(len(object.df_job[0])):
-            col_widths.append(len(object.df_job[0][col_idx])-2)
+        for col_idx in range(len(object_plate.df_job[0])):
+            col_widths.append(len(object_plate.df_job[0][col_idx])-2)
 
 
         # fill the frame with data - job info
-        for row_idx, row in enumerate(object.df_job[1:]):
+        for row_idx, row in enumerate(object_plate.df_job[1:]):
             for col_idx, item in enumerate(row):
                 Label(container, text=item, width=col_widths[col_idx]).grid(row=row_idx, column=col_idx, sticky='', padx=5, pady=2)
                 #Label(container, text=item).grid(row=row_idx, column=col_idx, sticky='', padx=5, pady=2)
@@ -191,15 +191,15 @@ class NotepadApp:
         # force update to ensure the tab is fully rendered
         self.root.update_idletasks()
 
-    def add_frame_data_selection(self, object, parent_frame):
+    def add_frame_data_selection(self, object_plate, parent_frame):
         #get height of the screen and adjust height to fill the screen minus height of plate_frame_info minus some padding
-        available_height = self.root.winfo_screenheight() - object.frames['frame_plate_info'].winfo_height() - object.frames['frame_plate_info'].winfo_height() - 85
+        available_height = self.root.winfo_screenheight() - object_plate.frames['frame_plate_info'].winfo_height() - object_plate.frames['frame_plate_info'].winfo_height() - 85
         
         frame_data_selection = LabelFrame(parent_frame, text="Data slection", width=146, height=(available_height+24))
         frame_data_selection.grid(row=2, column=0, rowspan=6, padx=10, pady=10, sticky='news')
         frame_data_selection.grid_propagate(flag=False)
-        object.frames['frame_data_selection'] = frame_data_selection
-        object.selected_data = [tk.IntVar() for i in range(len(object.df_data.columns))]
+        object_plate.frames['frame_data_selection'] = frame_data_selection
+        object_plate.selected_data = [tk.IntVar() for i in range(len(object_plate.df_data.columns))]
 
         #get height of the screen - height of the head of the window - height of the menu - height of the windows start bar
         canvas = Canvas(frame_data_selection, width=200, height=available_height)
@@ -227,31 +227,31 @@ class NotepadApp:
         canvas.create_window((0, 0), window=container, anchor=NW)
         #right click will uncheck all checkboxes
         
-        checkbox = [None] * len(object.df_data.columns)
+        checkbox = [None] * len(object_plate.df_data.columns)
         #create a one column of checkboxes from df_data.columns
-        for index, col in enumerate(object.df_data.columns):
-            checkbox[index] = Checkbutton(container, text=col, variable=object.selected_data[index], onvalue=1, offvalue=0, command=lambda: self.frame_data_selection_checkbox_enable(object, checkbox))
+        for index, col in enumerate(object_plate.df_data.columns):
+            checkbox[index] = Checkbutton(container, text=col, variable=object_plate.selected_data[index], onvalue=1, offvalue=0, command=lambda: self.frame_data_selection_checkbox_enable(object_plate, checkbox))
             checkbox[index].grid(row=index, column=0, sticky='w', padx=5, pady=2)
             
 
         
-        self.bind_to_widget_and_children(canvas, "<Button-3>", lambda event: self.frame_data_selection_checkbox_enable(object, checkbox))
-        self.bind_to_widget_and_children(canvas, "<Button-3>", lambda event: self.uncheck_all(container, object, checkbox))
-        #lambda: self.frame_data_selection_checkbox_enable(object, checkbox)
+        self.bind_to_widget_and_children(canvas, "<Button-3>", lambda event: self.frame_data_selection_checkbox_enable(object_plate, checkbox))
+        self.bind_to_widget_and_children(canvas, "<Button-3>", lambda event: self.uncheck_all(container, object_plate, checkbox))
+        #lambda: self.frame_data_selection_checkbox_enable(object_plate, checkbox)
         self.root.update_idletasks()
 
-    def frame_data_selection_checkbox_enable(self, object, checkbox):
+    def frame_data_selection_checkbox_enable(self, object_plate, checkbox):
         sum = 0
-        for var in object.selected_data:
+        for var in object_plate.selected_data:
             sum += var.get()
 
         # if there are more than 8 selected, unselect all others
         if sum >= 8:
-            for index, var in enumerate(object.selected_data):
+            for index, var in enumerate(object_plate.selected_data):
                 if var.get() == 0:
                     checkbox[index].config(state=DISABLED)
         else:
-            for index, var in enumerate(object.selected_data):
+            for index, var in enumerate(object_plate.selected_data):
                     checkbox[index].config(state=NORMAL)
 
     def bind_to_widget_and_children(self,widget, event, handler):
@@ -260,43 +260,43 @@ class NotepadApp:
                 self.bind_to_widget_and_children(child, event, handler)
 
         
-    def uncheck_all(self, container, object, checkbox,event=None):
+    def uncheck_all(self, container, object_plate, checkbox,event=None):
         for child in container.winfo_children():
             child.deselect()
 
-        for var in object.selected_data:
+        for var in object_plate.selected_data:
             var.set(0)
 
-        for index, var in enumerate(object.selected_data):
+        for index, var in enumerate(object_plate.selected_data):
             checkbox[index].config(state=NORMAL)
 
-    def add_frame_figure_handle(self, object, parent_frame):
+    def add_frame_figure_handle(self, object_plate, parent_frame):
         frame_figure_handle = Frame(parent_frame)
         frame_figure_handle.grid(row=1,column=0, columnspan=3, sticky='news', pady=10, padx=10)
-        object.frames['frame_figure_handle'] = frame_figure_handle
+        object_plate.frames['frame_figure_handle'] = frame_figure_handle
 
-        Button(frame_figure_handle, text='New figure\n--->', command=lambda :self.add_new_figure(object)).grid(row=1, column=0, pady=10)
+        Button(frame_figure_handle, text='New figure\n--->', command=lambda :self.add_new_figure(object_plate)).grid(row=1, column=0, pady=10)
         Button(frame_figure_handle, text='Delete figure\n<---', command=None).grid(row=1, column=1, pady=10, sticky='w')
         #Button(frame_figure_handle, text='Plot', command=None).grid(row=2, column=1, pady=10, padx=10, sticky='news')
 
         Label(frame_figure_handle, text='Figure name:  ').grid(row=0, column=0, sticky='', pady=10)
         figure_entry_name = Entry(frame_figure_handle, width=50)
         figure_entry_name.grid(row=0, column=1, columnspan=10, sticky='', pady=10)
-        self.figure_entry_name = figure_entry_name
+        object_plate.figure_entry_name = figure_entry_name
 
-    def add_frame_figure_selection(self, object, parent_frame):
+    def add_frame_figure_selection(self, object_plate, parent_frame):
         frame_figure_selection = LabelFrame(parent_frame, text='Figures', width=1170, height=102)
         frame_figure_selection.grid(row=1, column=11, columnspan=12, sticky='news', padx=10, pady=10)
         frame_figure_selection.grid_propagate(flag=False)
-        object.frames['frame_figure_selection'] = frame_figure_selection
+        object_plate.frames['frame_figure_selection'] = frame_figure_selection
         
-        self.notebook_figures_selection = ttk.Notebook(frame_figure_selection)
-        self.notebook_figures_selection.grid(row=0, column=0, sticky='news')
+        object_plate.notebook_figures_selection = ttk.Notebook(frame_figure_selection)
+        object_plate.notebook_figures_selection.grid(row=0, column=0, sticky='news')
         frame_figure_selection.grid_rowconfigure(0, weight=1)
         frame_figure_selection.grid_columnconfigure(0, weight=1)
 
-        self.notebook_figures_selection.bind("<Button-1>", lambda event: self.on_tab_click('notebook_figures_selection', event))
-        self.notebook_figures_selection.bind("<Button-3>", lambda event: self.on_tab_right_click('notebook_figures_selection',event))
+        object_plate.notebook_figures_selection.bind("<Button-1>", lambda event: self.on_tab_click('notebook_figures_selection', event))
+        object_plate.notebook_figures_selection.bind("<Button-3>", lambda event: self.on_tab_right_click('notebook_figures_selection',event))
         
         self.root.update_idletasks()
 
@@ -305,7 +305,7 @@ class NotepadApp:
         process = psutil.Process(os.getpid())
         print(f"Memory usage: {process.memory_info().rss / 1024 / 1024} MB") # in bytes process.memory_info().rss / 1024 / 1024
     
-    def add_frame_plot_settings(self, object, parent_frame):
+    def add_frame_plot_settings(self, object_plate, parent_frame):
         frame_plot_settings = LabelFrame(parent_frame, text='Plot settings', height=350, width=450)
         frame_plot_settings.grid(row=2, column=21, columnspan=2, rowspan=6, sticky='news', padx=10, pady=10)
         frame_plot_settings.grid_propagate(flag=False)
@@ -313,41 +313,42 @@ class NotepadApp:
         frame_plot_settings.grid_columnconfigure(0, weight=1)
         
         
-        object.frames['frame_plot_settings'] = frame_plot_settings
+        object_plate.frames['frame_plot_settings'] = frame_plot_settings
         
         self.root.update_idletasks()
 
-    def add_frame_preview(self, object, parent_frame):
+    def add_frame_preview(self, object_plate, parent_frame):
         frame_preview = LabelFrame(parent_frame, text='Preview', width=200, height=100)
         frame_preview.grid(row=2, column=1, columnspan=20, rowspan=6, pady=10, padx=10, sticky='news')
         #frame_preview.grid_propagate(flag=False)
-        object.frames['frame_preview'] = frame_preview
+        object_plate.frames['frame_preview'] = frame_preview
 
         canvas = Canvas(frame_preview)
         canvas.grid(row=0, column=0, sticky='news')
 
         self.root.update_idletasks()
 
-    def add_frame_template(self, object, parent_frame):
+    def add_frame_template(self, object_plate, parent_frame):
         frame_template = LabelFrame(parent_frame, text='Template', height=150, width=200)
         frame_template.grid(row=0, column=21, sticky='news', pady=10, padx=10)
-        object.frames['frame_template'] = frame_template
+        object_plate.frames['frame_template'] = frame_template
 
         self.root.update_idletasks()
 
-    def add_new_figure(self, object):
-        new_figure_name = self.figure_entry_name.get()
-        if new_figure_name not in AddFigure.get_all_figure_name() and new_figure_name != '':
+    def add_new_figure(self, object_plate):
+        new_figure_name = object_plate.figure_entry_name.get()
+        if new_figure_name not in object_plate.figures.keys() and new_figure_name != '':
             new_figure = AddFigure(new_figure_name)
-            frame = Frame(self.notebook_figures_selection)
-            self.notebook_figures_selection.add(frame, text=new_figure_name)
-            self.notebook_figures_selection.select(frame)
+            object_plate.figures[new_figure_name] = new_figure 
+            frame = Frame(object_plate.notebook_figures_selection)
+            object_plate.notebook_figures_selection.add(frame, text=new_figure_name)
+            object_plate.notebook_figures_selection.select(frame)
 
             # create labels of data we want to plot
             row_idx, col_idx = 0, 0
-            for index, var in enumerate(object.selected_data):
+            for index, var in enumerate(object_plate.selected_data):
                 if var.get() == 1:
-                    item = '  ' + self.selected_object.df_data.columns[index] + '  '
+                    item = '  ' + object_plate.df_data.columns[index] + '  '
                     Label(frame, text=item).grid(row=row_idx, column=col_idx, sticky='w', padx=10, pady=5)
                     row_idx += 1
                     if row_idx >= 2:
@@ -355,21 +356,21 @@ class NotepadApp:
                         col_idx += 1
 
             # adding data to the object
-            for index, checked_box in enumerate(object.selected_data):
+            for index, checked_box in enumerate(object_plate.selected_data):
                 if int(checked_box.get()) == 1:
-                    axis_name = object.df_data.columns[index]
-                    new_figure.add_ax(object.df_data.columns[index], self.selected_object.df_data[axis_name])
+                    axis_name = object_plate.df_data.columns[index]
+                    new_figure.add_ax(object_plate.df_data.columns[index], object_plate.df_data[axis_name])
         
-            self.create_separated_frame(object, new_figure)
+            self.create_separated_frame(object_plate, new_figure)
 
         self.root.update_idletasks()
 
-    def create_separated_frame(self, object, new_figure):
-        frame_plot_settings_inner = Frame(object.frames['frame_plot_settings'])
+    def create_separated_frame(self, object_plate, new_figure):
+        frame_plot_settings_inner = Frame(object_plate.frames['frame_plot_settings'])
         frame_plot_settings_inner.grid(row=0, column=0, sticky='news')
         frame_plot_settings_inner.grid_propagate(flag=False)
         frame_plot_settings_inner.grid_columnconfigure(0, weight=1)
-        object.frames['frame_plot_settings_inner'][new_figure.name] = frame_plot_settings_inner
+        object_plate.frames['frame_plot_settings_inner'][new_figure.name] = frame_plot_settings_inner
         
         figure_name_label = Label(frame_plot_settings_inner, text='Figure name')
         figure_name_label.grid(row=0, column=0, sticky='w', padx=10, pady=10)
@@ -381,6 +382,9 @@ class NotepadApp:
         notebook = ttk.Notebook(frame_plot_settings_inner)
         notebook.grid(row=1, column=0, columnspan=2, sticky='news')
         
+        button_plot = Button(frame_plot_settings_inner, text='PLOT', command=self.plot_update)
+        button_plot.grid(row=2, column=1, sticky='news')
+
         for ax_number, ax in enumerate(new_figure.axes):
             tab = Frame(notebook)
             name = ax['name']
@@ -389,7 +393,6 @@ class NotepadApp:
             
             
             notebook.add(tab, text=name)
-            print(type(ax['name']))
             
             # dict of assigned variables
             dict_of_widgets = {}
@@ -415,7 +418,7 @@ class NotepadApp:
             dict_of_widgets['legend_label'] = legend_label_entry
 
 
-            x_range_label = Label(tab, text='X range')
+            x_range_label = Label(tab, text='X range min,max')
             x_range_label.grid(row=3, column=0, padx=10, pady=10)
 
             
@@ -423,7 +426,7 @@ class NotepadApp:
             x_range_entry.grid(row=3, column=1, padx=10, pady=10)
             dict_of_widgets['x_range'] = x_range_entry
 
-            y_limit_label = Label(tab, text='Y range')
+            y_limit_label = Label(tab, text='Y range min,max')
             y_limit_label.grid(row=4, column=0, padx=10, pady=10)
 
             
@@ -434,15 +437,15 @@ class NotepadApp:
             y_ax_number_label = Label(tab, text='Y axis position')
             y_ax_number_label.grid(row=5, column=0, padx=10, pady=10)
 
-            y_ax_number_combobox = ttk.Combobox(tab, values=[i for i in range(0,8)])
+            y_ax_number_combobox = ttk.Combobox(tab, values=[i for i in range(0,8)], state="readonly")
             y_ax_number_combobox.grid(row=5, column=1, padx=10, pady=10)
-            y_ax_number_combobox.set(ax_number)
+            y_ax_number_combobox.set(0)
             dict_of_widgets['y_ax_number'] = y_ax_number_combobox
 
             color_label = Label(tab, text='Color')
             color_label.grid(row=6, column=0, padx=10, pady=10)
 
-            color_combobox = ttk.Combobox(tab, values=new_figure.color_list)
+            color_combobox = ttk.Combobox(tab, values=new_figure.color_list, state="readonly")
             color_combobox.grid(row=6, column=1, padx=10, pady=10)
             color_combobox.set(new_figure.color_list[ax_number])
             dict_of_widgets['color'] = color_combobox
@@ -455,39 +458,65 @@ class NotepadApp:
             line_width_entry.grid(row=7, column=1, padx=10, pady=10)
             line_width_entry.insert(0,1)
             dict_of_widgets['line_width'] = line_width_entry
+
+            hide_axis_label = Label(tab, text='Hide axis')
+            hide_axis_label.grid(row=8, column=0, padx=10, pady=10)
+
+            var = BooleanVar()
+            hide_axis_checkbutton = Checkbutton(tab, variable=var)
+            hide_axis_checkbutton.grid(row=8, column=1, padx=10, pady=10)
+            dict_of_widgets['hide_axis'] = var
             
 
             new_figure.plot_settings[ax['name']] =  dict_of_widgets
 
-        #print(object.frames['frame_plot_settings_inner'].items())
-        for key, value in new_figure.plot_settings.items():
+        #self.plot_update()
+        #new_figure.show_figure(plot=False) # plot a preview
+
+        #print(object_plate.frames['frame_plot_settings_inner'].items())
+        """for key, value in new_figure.plot_settings.items():
             print(key)
             for key1, value1 in value.items():
                 print('   ' + key1, value1)
-            print('\n\n')
+            print('\n\n')"""
+        
+    def plot_update(self):
 
+        selected_index = self.selected_object_plate.notebook_figures_selection.index(self.selected_object_plate.notebook_figures_selection.select())
+        print("Selected tab index:", selected_index)
+
+        # Optionally, get the text (name) of the selected tab
+        tab_text = self.selected_object_plate.notebook_figures_selection.tab(selected_index, "text").replace(" ","")
+        print("Selected tab text:", tab_text)
+
+        for ax in self.selected_object_plate.figures[tab_text].axes:
+            axis_label = self.selected_object_plate.figures[tab_text].plot_settings[ax['name']]['axis_label'].get()
+            
+            axis_label = self.selected_object_plate.figures[tab_text].plot_settings[ax['name']]['axis_label'].get()
+            x_range = self.selected_object_plate.figures[tab_text].plot_settings[ax['name']]['x_range'].get()
+            y_range = self.selected_object_plate.figures[tab_text].plot_settings[ax['name']]['y_range'].get()
+            legend_label = self.selected_object_plate.figures[tab_text].plot_settings[ax['name']]['legend_label'].get()
+            y_ax_number = self.selected_object_plate.figures[tab_text].plot_settings[ax['name']]['y_ax_number'].get()
+            color = self.selected_object_plate.figures[tab_text].plot_settings[ax['name']]['color'].get()
+            line_width = self.selected_object_plate.figures[tab_text].plot_settings[ax['name']]['line_width'].get()
+            hide_axis = self.selected_object_plate.figures[tab_text].plot_settings[ax['name']]['hide_axis'].get()
+
+            print('\n***' + ax['name'] + '***')
+            print(axis_label)
+            print(x_range)
+            print(y_range)
+            print(legend_label)
+            print(y_ax_number)
+            print(color)
+            print(line_width)
+            print(hide_axis)
+            print('---------------------\n\n')
+            
+        self.selected_object_plate.figures[tab_text].show_figure() 
     #add the first tab to the notebook
     def add_plus_tab(self):
         frame = tk.Frame(self.notebook)
         self.notebook.add(frame, text=self.plus_tab_label)
-
-    def on_tab_right_clicks(self, source, event=None):
-        if source == 'notebook_main':
-            try:
-                tab_id = self.notebook.index(f"@{event.x},{event.y}")
-                print('right_click ', type(tab_id), tab_id)
-            except tk.TclError:
-                return
-
-            # Check if the tab is equal to the + sign
-            tab_text = self.notebook.tab(tab_id, option="text")
-
-            if tab_text != self.plus_tab_label:
-                self.close_tab(tab_id)
-        elif source == 'notebook_figures_selection':
-            print(source + 'ok')
-        else:
-            print('wefwsfwsfrfrsfgrgrsegeg')
 
     def on_tab_right_click(self, source, event=None):
         if source == 'notebook_main':
@@ -508,7 +537,7 @@ class NotepadApp:
         elif source == 'notebook_figures_selection':
             try:
                 print('right click')
-                tab_id = self.notebook_figures_selection.index(f"@{event.x},{event.y}")
+                tab_id = self.selected_object_plate.notebook_figures_selection.index(f"@{event.x},{event.y}")
                 print('right_click ',type(tab_id), tab_id)
             except tk.TclError:
                 return
@@ -517,6 +546,9 @@ class NotepadApp:
             self.close_tab(tab_id,source)
         else:
             print('wefwsfwsfrfrsfgrgrsegeg')
+
+        # force update to ensure the tab is fully rendered
+        self.root.update_idletasks()
 
     def on_tab_click(self, source, event=None):
         if source == 'notebook_main':
@@ -532,27 +564,33 @@ class NotepadApp:
                 self.add_tab()
                 self.notebook.select(len(self.notebook.tabs()) - 2)
             else:
-                self.selected_object = self.tabs[tab_text.replace(" ", "")]
+                self.selected_object_plate = self.tabs[tab_text.replace(" ", "")]
         elif source == 'notebook_figures_selection':
             try:
-                tab_id = self.notebook_figures_selection.index(f"@{event.x},{event.y}")
+                tab_id = self.selected_object_plate.notebook_figures_selection.index(f"@{event.x},{event.y}")
             except tk.TclError:
                 return
+            
             print(tab_id)
-            tab_text = self.notebook_figures_selection.tab(tab_id, option="text")
+            tab_text = self.selected_object_plate.notebook_figures_selection.tab(tab_id, option="text")
             print(tab_text)
-            self.selected_object.frames['frame_plot_settings_inner'][tab_text].tkraise()
-        else:
-            return
+            self.selected_object_plate.frames['frame_plot_settings_inner'][tab_text].tkraise()
+
+        # force update to ensure the tab is fully rendered
+        self.root.update_idletasks()
+            
     
 
     def close_tab(self, tab_id, source=None):
-        if source == 'notebook_main':
+        if source == 'notebook_main' or source == None:
             tab_index = self.notebook.index(tab_id)
 
             tab_text = self.notebook.tab(tab_id, option="text").replace(" ", "")
             print(tab_text)
             print(self.tabs[tab_text])
+
+            index = self.tabs[tab_text]
+            print('tab index after close is' + str(index))
             del self.tabs[tab_text]
 
             # Get the widget name associated with the tab index
@@ -563,22 +601,44 @@ class NotepadApp:
 
             if int(tab_index) > 0:
                 self.notebook.select(tab_index-1)
+                
+            # Get the index of the currently selected tab
+            selected_index = self.notebook.index(self.notebook.select())
+    
+            # Get the text of the selected tab
+            tab_text = self.notebook.tab(selected_index, "text").replace(" ","")
+            if tab_text != self.plus_tab_label.replace(" ",""):
+                self.selected_object_plate = self.tabs[tab_text]
 
         elif source == 'notebook_figures_selection':
-            tab_index = self.notebook_figures_selection.index(tab_id)
+            tab_index = self.selected_object_plate.notebook_figures_selection.index(tab_id)
 
-            tab_text = self.notebook_figures_selection.tab(tab_id, option="text").replace(" ", "")
+            tab_text = self.selected_object_plate.notebook_figures_selection.tab(tab_id, option="text").replace(" ", "")
+
+            selected_tab_id = self.notebook.select()
+    
+            # Get the text (name) of the selected tab
+            tab_text_main = self.notebook.tab(selected_tab_id, "text")
+
+            tab_text_main = tab_text_main.replace(" ", "")
+
+            
+
             print(tab_text)
             
             # Get the widget name associated with the tab index
-            tab_widget_name = self.notebook_figures_selection.tabs()[tab_index]
-            frame = self.notebook_figures_selection.nametowidget(tab_widget_name)
+            tab_widget_name = self.selected_object_plate.notebook_figures_selection.tabs()[tab_index]
+            frame = self.selected_object_plate.notebook_figures_selection.nametowidget(tab_widget_name)
 
             frame.destroy()
 
-        #never select '+' tab
-        
-        
+            object_plate_name = self.selected_object_plate.name
+            del self.tabs[object_plate_name].figures[tab_text]
+            
+
+        # force update to ensure the tab is fully rendered
+        self.root.update_idletasks()
+       
     def close_all_tabs(self,event=None):
         for tab in self.notebook.tabs():
             self.close_this_tab(tab)
@@ -619,23 +679,29 @@ class NotepadApp:
         self.root.bind('<Control-h>', self.get_help)
         
     def close_this_tab(self, event=None):
+        print('close this tab')
         tab_id = self.notebook.select()
         tab_text = self.notebook.tab(tab_id, option="text")
+        print(tab_id, tab_text, self.plus_tab_label)
         if tab_text != self.plus_tab_label:
             self.close_tab(tab_id)
 
+        
+
     def save(self, event=None):
+
         print('Save')
     
     def save_as(self, event=None):
+        gc.collect()
         print('Save as')
     
     def get_help(self,event=None):
         self.get_memory_usage()
-        print(self.tabs.items())
-        width = self.selected_object.frames['frame_figure_selection'].winfo_width()
-        height = self.selected_object.frames['frame_figure_selection'].winfo_height()
-        print(width, height)
+        #print(self.tabs.items())
+        #width = self.selected_object_plate.frames['frame_figure_selection'].winfo_width()
+        #height = self.selected_object_plate.frames['frame_figure_selection'].winfo_height()
+        #print(width, height)
 
 
     def exit_app(self,event=None):
