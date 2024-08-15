@@ -86,7 +86,8 @@ class PlateAnalyzer:
         df_data.columns = df_data_header
         
         # Remove columns with 'Unnamed' in their names
-        df_data = df_data.dropna(axis=1, how='any').reset_index(drop=True)
+        df_data = df_data.dropna(axis=1, how='any').reset_index(drop=True).astype(float)
+        # Convert all columns to numeric, forcing errors to NaN (not a number)
         
         #return name of the file, df_plate, df_job, df_data
         return f"{os.path.splitext(os.path.basename(file_path))[0]}",df_plate, df_job, df_data
