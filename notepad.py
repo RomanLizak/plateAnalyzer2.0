@@ -360,7 +360,9 @@ class NotepadApp:
                 if int(checked_box.get()) == 1:
                     axis_name = object_plate.df_data.columns[index]
                     new_figure.add_ax(object_plate.df_data.columns[index], object_plate.df_data[axis_name])
-        
+            new_figure.x_range[0] = object_plate.df_data.index.min()
+            new_figure.x_range[1] = object_plate.df_data.index.max()
+
             self.create_separated_frame(object_plate, new_figure)
 
         self.root.update_idletasks()
@@ -370,23 +372,51 @@ class NotepadApp:
         frame_plot_settings_inner.grid(row=0, column=0, sticky='news')
         frame_plot_settings_inner.grid_propagate(flag=False)
         frame_plot_settings_inner.grid_columnconfigure(0, weight=1)
-        object_plate.frames['frame_plot_settings_inner'][new_figure.name] = frame_plot_settings_inner
         
+        object_plate.frames['frame_plot_settings_inner'][new_figure.name] = frame_plot_settings_inner
+
+        dict_of_global_widgets = {}
+
         figure_name_label = Label(frame_plot_settings_inner, text='Figure name')
         figure_name_label.grid(row=0, column=0, sticky='w', padx=10, pady=10)
 
         figure_name_entry = Entry(frame_plot_settings_inner, width=55)
-        figure_name_entry.grid(row=0, column=1, sticky='e', padx=10, pady=10)
+        figure_name_entry.grid(row=0, column=1, columnspan=5, sticky='e', padx=10, pady=10)
         figure_name_entry.insert(0,new_figure.name)
+        dict_of_global_widgets['figure_name'] = figure_name_entry
 
         notebook = ttk.Notebook(frame_plot_settings_inner)
-        notebook.grid(row=1, column=0, columnspan=2, sticky='news')
+        notebook.grid(row=1, column=0, columnspan=5, sticky='news')
         
         button_plot = Button(frame_plot_settings_inner, text='PLOT', command=self.plot_update)
-        button_plot.grid(row=2, column=1, sticky='news')
+        button_plot.grid(row=3, column=0, columnspan=5, sticky='news')
+
+        
+        x_range_label = Label(frame_plot_settings_inner, text='X range')
+        x_range_label.grid(row=2, column=0, sticky='w', padx=10, pady=10)
+        
+        x_range_label_min = Label(frame_plot_settings_inner, text='min', width=3)
+        x_range_label_min.grid(row=2, column=1, sticky='w', padx=1, pady=10)
+        
+        x_range_entry_min = Entry(frame_plot_settings_inner, width=10)
+        x_range_entry_min.insert(0,'auto')
+        x_range_entry_min.grid(row=2, column=2, sticky='w', padx=1, pady=10)
+        dict_of_global_widgets['x_range_min'] = x_range_entry_min
+        
+        
+        x_range_label_max = Label(frame_plot_settings_inner, text='max', width=3)
+        x_range_label_max.grid(row=2, column=3, sticky='w', padx=1, pady=10)
+
+        x_range_entry_max = Entry(frame_plot_settings_inner, width=10)
+        x_range_entry_max.insert(0,'auto')
+        x_range_entry_max.grid(row=2, column=4, sticky='w', padx=1, pady=10)
+        dict_of_global_widgets['x_range_max'] = x_range_entry_max
+
+        new_figure.figure_settings =  dict_of_global_widgets
 
         for ax_number, ax in enumerate(new_figure.axes):
             tab = Frame(notebook)
+
             name = ax['name']
             index = name.find('[')-1  # Find the index of the first '['
             name = name[:index] # Name without brackets
@@ -395,80 +425,82 @@ class NotepadApp:
             notebook.add(tab, text=name)
             
             # dict of assigned variables
-            dict_of_widgets = {}
+            dict_of_local_widgets = {}
 
             axis_name_label = Label(tab, text=ax['name'])
-            axis_name_label.grid(row=0, column=0, columnspan=2, sticky='ew', padx=10, pady=10)
+            axis_name_label.grid(row=0, column=0, columnspan=5, padx=10, pady=10, sticky='w')
 
             axis_label_label = Label(tab, text='Axis label')
-            axis_label_label.grid(row=1, column=0, padx=10, pady=10)
+            axis_label_label.grid(row=1, column=0, padx=10, pady=10, sticky='w')
 
             axis_label_entry = Entry(tab)
-            axis_label_entry.grid(row=1, column=1, padx=10, pady=10)
+            axis_label_entry.grid(row=1, column=1, columnspan=4, padx=1, pady=10, sticky='w')
             axis_label_entry.insert(0,ax['name']) #default name of the axis label
-            dict_of_widgets['axis_label'] = axis_label_entry
+            dict_of_local_widgets['axis_label'] = axis_label_entry
 
             legend_label_label = Label(tab, text='Legend label')
-            legend_label_label.grid(row=2, column=0, padx=10, pady=10)
+            legend_label_label.grid(row=2, column=0, padx=10, pady=10, sticky='w')
 
             
             legend_label_entry = Entry(tab)
-            legend_label_entry.grid(row=2, column=1, padx=10, pady=10)
+            legend_label_entry.grid(row=2, column=1, columnspan=4, sticky='w', padx=1, pady=10)
             legend_label_entry.insert(0,ax['name']) #default name of the legend label
-            dict_of_widgets['legend_label'] = legend_label_entry
+            dict_of_local_widgets['legend_label'] = legend_label_entry
 
+            y_range_label = Label(tab, text='Y range')
+            y_range_label.grid(row=4, column=0, sticky='w', padx=10, pady=10)
 
-            x_range_label = Label(tab, text='X range min,max')
-            x_range_label.grid(row=3, column=0, padx=10, pady=10)
+            y_range_label_min = Label(tab, text='min', width=3)
+            y_range_label_min.grid(row=4, column=1, sticky='w', padx=1, pady=10)
 
-            
-            x_range_entry = Entry(tab)
-            x_range_entry.grid(row=3, column=1, padx=10, pady=10)
-            dict_of_widgets['x_range'] = x_range_entry
+            y_range_entry_min = Entry(tab, width=10)
+            y_range_entry_min.insert(0,'auto')
+            y_range_entry_min.grid(row=4, column=2, sticky='w', padx=1, pady=10)
+            dict_of_local_widgets['y_range_min'] = y_range_entry_min
 
-            y_limit_label = Label(tab, text='Y range min,max')
-            y_limit_label.grid(row=4, column=0, padx=10, pady=10)
+            y_range_label_max = Label(tab, text='max', width=3)
+            y_range_label_max.grid(row=4, column=3, sticky='w', padx=1, pady=10)
 
-            
-            y_range_entry = Entry(tab)
-            y_range_entry.grid(row=4, column=1, padx=10, pady=10)
-            dict_of_widgets['y_range'] = y_range_entry
+            y_range_entry_max = Entry(tab, width=10)
+            y_range_entry_max.insert(0,'auto')
+            y_range_entry_max.grid(row=4, column=4, sticky='w', padx=1, pady=10)
+            dict_of_local_widgets['y_range_max'] = y_range_entry_max
 
             y_ax_number_label = Label(tab, text='Y axis position')
-            y_ax_number_label.grid(row=5, column=0, padx=10, pady=10)
+            y_ax_number_label.grid(row=5, column=0, sticky='w', padx=10, pady=10)
 
-            y_ax_number_combobox = ttk.Combobox(tab, values=[i for i in range(0,8)], state="readonly")
-            y_ax_number_combobox.grid(row=5, column=1, padx=10, pady=10)
+            y_ax_number_combobox = ttk.Combobox(tab, values=[i for i in range(0,8)], state="readonly", width=10)
+            y_ax_number_combobox.grid(row=5, column=1, columnspan=4, sticky='w', padx=1, pady=10)
             y_ax_number_combobox.set(0)
-            dict_of_widgets['y_ax_number'] = y_ax_number_combobox
+            dict_of_local_widgets['y_ax_number'] = y_ax_number_combobox
 
             color_label = Label(tab, text='Color')
-            color_label.grid(row=6, column=0, padx=10, pady=10)
+            color_label.grid(row=6, column=0, sticky='w', padx=10, pady=10)
 
-            color_combobox = ttk.Combobox(tab, values=new_figure.color_list, state="readonly")
-            color_combobox.grid(row=6, column=1, padx=10, pady=10)
+            color_combobox = ttk.Combobox(tab, values=new_figure.color_list, state="readonly", width=10)
+            color_combobox.grid(row=6, column=1, columnspan=4, sticky='w', padx=1, pady=10)
             color_combobox.set(new_figure.color_list[ax_number])
-            dict_of_widgets['color'] = color_combobox
+            dict_of_local_widgets['color'] = color_combobox
 
             line_width_label = Label(tab, text='Line width')
-            line_width_label.grid(row=7, column=0, padx=10, pady=10)
+            line_width_label.grid(row=7, column=0, sticky='w', padx=10, pady=10)
 
 
-            line_width_entry = Entry(tab)
-            line_width_entry.grid(row=7, column=1, padx=10, pady=10)
+            line_width_entry = Entry(tab, width=10)
+            line_width_entry.grid(row=7, column=1, columnspan=4, sticky='w', padx=1, pady=10)
             line_width_entry.insert(0,1)
-            dict_of_widgets['line_width'] = line_width_entry
+            dict_of_local_widgets['line_width'] = line_width_entry
 
             hide_axis_label = Label(tab, text='Hide axis')
-            hide_axis_label.grid(row=8, column=0, padx=10, pady=10)
+            hide_axis_label.grid(row=8, column=0, sticky='w', padx=10, pady=10)
 
             var = BooleanVar()
-            hide_axis_checkbutton = Checkbutton(tab, variable=var)
-            hide_axis_checkbutton.grid(row=8, column=1, padx=10, pady=10)
-            dict_of_widgets['hide_axis'] = var
+            hide_axis_checkbutton = Checkbutton(tab, variable=var, width=5)
+            hide_axis_checkbutton.grid(row=8, column=1, sticky='w', columnspan=4, padx=10, pady=10)
+            dict_of_local_widgets['hide_axis'] = var
             
-
-            new_figure.plot_settings[ax['name']] =  dict_of_widgets
+            #tab.grid_propagate(flag=False)
+            new_figure.plot_settings[ax['name']] =  dict_of_local_widgets
 
         #self.plot_update()
         #new_figure.show_figure(plot=False) # plot a preview
@@ -489,31 +521,85 @@ class NotepadApp:
         tab_text = self.selected_object_plate.notebook_figures_selection.tab(selected_index, "text").replace(" ","")
         print("Selected tab text:", tab_text)
 
+        self.selected_object_plate.figures[tab_text].name = self.selected_object_plate.figures[tab_text].figure_settings['figure_name'].get()
+        x_range_min = self.selected_object_plate.figures[tab_text].figure_settings['x_range_min'].get()
+        x_range_max = self.selected_object_plate.figures[tab_text].figure_settings['x_range_max'].get()
+
+        self.selected_object_plate.figures[tab_text].x_range[0], self.selected_object_plate.figures[tab_text].x_range[1] = self.get_x_axis_range(tab_text, x_range_min, x_range_max)
+
         for ax in self.selected_object_plate.figures[tab_text].axes:
             axis_label = self.selected_object_plate.figures[tab_text].plot_settings[ax['name']]['axis_label'].get()
-            
             axis_label = self.selected_object_plate.figures[tab_text].plot_settings[ax['name']]['axis_label'].get()
-            x_range = self.selected_object_plate.figures[tab_text].plot_settings[ax['name']]['x_range'].get()
-            y_range = self.selected_object_plate.figures[tab_text].plot_settings[ax['name']]['y_range'].get()
+            y_range_min = self.selected_object_plate.figures[tab_text].plot_settings[ax['name']]['y_range_min'].get()
+            y_range_max = self.selected_object_plate.figures[tab_text].plot_settings[ax['name']]['y_range_max'].get()
             legend_label = self.selected_object_plate.figures[tab_text].plot_settings[ax['name']]['legend_label'].get()
             y_ax_number = self.selected_object_plate.figures[tab_text].plot_settings[ax['name']]['y_ax_number'].get()
             color = self.selected_object_plate.figures[tab_text].plot_settings[ax['name']]['color'].get()
             line_width = self.selected_object_plate.figures[tab_text].plot_settings[ax['name']]['line_width'].get()
             hide_axis = self.selected_object_plate.figures[tab_text].plot_settings[ax['name']]['hide_axis'].get()
 
+            y_range_min, y_range_max = self.get_y_axis_range(ax, y_range_min, y_range_max)
+
             print('\n***' + ax['name'] + '***')
             print(axis_label)
-            print(x_range)
-            print(y_range)
+            print(y_range_min)
+            print(y_range_max)
             print(legend_label)
             print(y_ax_number)
             print(color)
             print(line_width)
             print(hide_axis)
             print('---------------------\n\n')
+
+            self.selected_object_plate.figures[tab_text].update_axis(ax['name'], axis_label, legend_label, y_range_min, y_range_max, y_ax_number, color, line_width, hide_axis)
             
         self.selected_object_plate.figures[tab_text].show_figure() 
     #add the first tab to the notebook
+
+    def get_x_axis_range(self, tab_text, x_range_min, x_range_max):
+        x_range_min_def = self.selected_object_plate.df_data.index.min()
+        x_range_max_def = self.selected_object_plate.df_data.index.max()
+        x_range_def = x_range_max_def - x_range_min_def
+        x_range_diff = x_range_def * 0.05
+
+        x_range = [0, 0]
+        if x_range_min == 'auto':
+            x_range[0] = x_range_min_def - x_range_diff
+            print('min autoautoautoautoautoautoauto')
+        else:
+            x_range[0] = float(x_range_min)
+
+        if x_range_max == 'auto':
+            print('max autoautoautoautoautoautoauto')
+            x_range[1] = x_range_max_def + x_range_diff
+        else:
+            x_range[1] = float(x_range_max)
+        
+        print(f"min {x_range[0]}", f"max {x_range[1]}")
+        return x_range[0], x_range[1]
+    
+
+    def get_y_axis_range(self, axis, y_range_min, y_range_max):
+        y_range_min_def = axis['data'].min()
+        y_range_max_def = axis['data'].max()
+        y_range_def = y_range_max_def- y_range_min_def
+        y_range_diff = y_range_def * 0.05
+
+        y_range = [0, 0]
+
+        if y_range_min == 'auto':
+            y_range[0] = y_range_min_def - y_range_diff
+        else:
+            y_range[0] = float(y_range_min)
+
+        if y_range_max == 'auto':
+            y_range[1] = y_range_max_def + y_range_diff
+        else:
+            y_range[1] = float(y_range_max)
+        
+        return y_range[0], y_range[1]
+
+   
     def add_plus_tab(self):
         frame = tk.Frame(self.notebook)
         self.notebook.add(frame, text=self.plus_tab_label)
@@ -629,6 +715,9 @@ class NotepadApp:
             # Get the widget name associated with the tab index
             tab_widget_name = self.selected_object_plate.notebook_figures_selection.tabs()[tab_index]
             frame = self.selected_object_plate.notebook_figures_selection.nametowidget(tab_widget_name)
+
+            for frame_inner in self.selected_object_plate.frames['frame_plot_settings_inner'].values():
+                frame_inner.destroy()
 
             frame.destroy()
 
