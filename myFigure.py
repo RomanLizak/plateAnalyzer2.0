@@ -62,7 +62,7 @@ class AddFigure():
     def sort_by_y_axis_number(self):
         self.axes.sort(key=lambda x: x['y_ax_number'])
 
-    def show_figure(self, preview=False):
+    def show_figure(self, preview=False, frame_preview_width=0, frame_preview_height=0):
         print('***************start plotting****************')
         self.axes.sort(key=lambda x: x['y_ax_number'])
         print('sorted list of axes\n\n')
@@ -76,17 +76,36 @@ class AddFigure():
         labels =[]
                 
         # index of the main axis
-        used_axes = list(set(int(axis['y_ax_number']) for axis in self.axes))
+        used_axes = list(set(int(axis['y_ax_number']) for axis in self.axes if axis['hide_axis'] is False))
         print(f'used axes are {used_axes}')       
+
+        # group together axis labels with the same y_axis_number
+        groups_label = {}
+        outward_label = [0 for i in range(len(used_axes))]
+        for index, y_number in enumerate(used_axes):
+            label = ''
+            for axis in self.axes:
+                if int(axis['y_ax_number']) == y_number and axis['hide_axis'] is False:
+                    label += axis['axis_label'] + '\n'
+                    if index > 0:
+                        outward_label[index] += 11
+            if index > 0:
+                outward_label[index] += (outward_label[index-1]) + 60
+            groups_label[index] = label
+
+        print(groups_label.items())
+        print(f'\n\noutward_label {outward_label}\n\n')
 
         # how many axes we need
         number_of_axis = len(used_axes)
         ax = [None] * (number_of_axis+1)
         
         #DOKONCI HIDE AXIS a GRID!!!
+        px = 1/plt.rcParams['figure.dpi']
 
         fig, ax[0] = plt.subplots()
-        fig.set_size_inches(12, 8)
+        #fig.set_size_inches(14.22, 8)
+        fig.set_size_inches(frame_preview_width*px, frame_preview_height*px)
         
         print('\n\n*********LIMITS CALCULATING**********\n')
         #calculate y limits for each axis
@@ -94,7 +113,7 @@ class AddFigure():
         for index, axis_number in enumerate(used_axes):
             y_range_axis = []
             for axis in self.axes:
-                if int(axis['y_ax_number']) == axis_number:
+                if int(axis['y_ax_number']) == axis_number and axis['hide_axis'] is False:
                     print(axis['y_range_min'], axis['y_range_max'])
                     y_range = [axis['y_range_min'], axis['y_range_max']]
                     y_range_axis.append(y_range)
@@ -107,19 +126,23 @@ class AddFigure():
         for index, axis_number in enumerate(used_axes):
             if index > 0:
                 ax[index] = ax[0].twinx()  # Create a new y-axis for each subsequent index
+                #ax[index].set_ylabel(groups_label[index])
+                
            
             for axis in self.axes:
-                if int(axis['y_ax_number']) == axis_number:
+                if int(axis['y_ax_number']) == axis_number and axis['hide_axis'] is False:
                     print(f"Plotting on axis {index}: {axis['name']} (y_ax_number: {axis['y_ax_number']})")
                     line, = ax[index].plot(
                         axis['data'].astype(float), 
-                        label=axis['axis_label'], 
+                        #label=axis['axis_label'], 
                         color=axis['color'], 
                         antialiased=True, 
                         linewidth=int(axis['line_width'])
                     )
-                    ax[index].set_ylabel(axis['axis_label'])
-                    ax[index].spines['right'].set_position(('outward', 60*index))
+                    ax[index].set_ylabel(groups_label[index])
+                    if index > 0:
+                        print(f'index is {index} and otweard is {(index-1)*60 + outward_label[index-1]}')
+                        ax[index].spines['right'].set_position(('outward',outward_label[index-1]))
                     legend.append(line)
                     labels.append(axis['legend_label'])
             
@@ -139,31 +162,32 @@ class AddFigure():
                 ax[index].set_xlim(self.x_range[0], self.x_range[1])
                 ax[index].set_ylim(min(range_mins), max(range_maxes))
         """# Customize the grid
-            ax[0].grid(True)  # Turn the grid on
+        ax[0].grid(True)  # Turn the grid on
 
-            # Set the major ticks for smaller squares
-            ax[0].set_xticks(np.arange(0, 4000, 200))  # Smaller x-ticks, change 0.5 to a smaller value for finer grid
-            ax[0].set_yticks(np.arange(-1, 1.1, 0.2))  # Smaller y-ticks, change 0.2 to a smaller value for finer grid
+        # Set the major ticks for smaller squares
+        ax[0].set_xticks(np.arange(0, 4000, 200))  # Smaller x-ticks, change 0.5 to a smaller value for finer grid
+        ax[0].set_yticks(np.arange(-1, 1.1, 0.2))  # Smaller y-ticks, change 0.2 to a smaller value for finer grid
 
-            # Set the minor ticks
-            ax[0].set_xticks(np.arange(0, 4000, 10), minor=True)  # Even finer grid on x-axis
-            ax[0].set_yticks(np.arange(-1, 1.1, 0.05), minor=True)  # Even finer grid on y-axis
+        # Set the minor ticks
+        ax[0].set_xticks(np.arange(0, 4000, 10), minor=True)  # Even finer grid on x-axis
+        ax[0].set_yticks(np.arange(-1, 1.1, 0.05), minor=True)  # Even finer grid on y-axis
 
-            # Customize the grid lines (Optional)
-            ax[0].grid(which='major', color='gray', linestyle='-', linewidth=0.5)
-            ax[0].grid(which='minor', color='gray', linestyle=':', linewidth=0.2)"""
-        ax[0].legend(legend, labels, loc='upper right', ncol=4)
+        # Customize the grid lines (Optional)
+        ax[0].grid(which='major', color='gray', linestyle='-', linewidth=0.5)
+        ax[0].grid(which='minor', color='gray', linestyle=':', linewidth=0.2)"""
         
+        ax[0].legend(legend, labels, loc='upper right', ncol=4, fontsize='small')
+        #print('\nscreen parameters:')
+        #print(plt.rcParams)
         plt.title(self.name)
         plt.tight_layout()
         plt.ion()
-        plt.show()
+        if preview == False:
+            plt.show()
+            return
+        else:
+            return fig
 
-        
-
-
-        return
-        
         for i, dict in enumerate(self.axes):
             if dict['sep_y']:
                 ax2 = ax.twinx()
