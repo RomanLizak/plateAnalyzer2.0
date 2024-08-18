@@ -2,6 +2,7 @@ import tkinter as tk
 from tkinter import *
 from tkinter import ttk
 from tkinter import filedialog
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 import os
 import psutil
 import gc
@@ -174,7 +175,7 @@ class NotepadApp:
         help_frame.grid(row=0, column=0, sticky='news')
         # add header
         for col_idx, item in enumerate(object_plate.df_job[0]):
-           Label(help_frame, text=item).grid(row=0, column=col_idx, sticky='', padx=5, pady=2)
+           Label(help_frame, text=item).grid(row=0, column=col_idx, sticky='', padx=10, pady=2)
         
         col_widths = []
         for col_idx in range(len(object_plate.df_job[0])):
@@ -184,7 +185,7 @@ class NotepadApp:
         # fill the frame with data - job info
         for row_idx, row in enumerate(object_plate.df_job[1:]):
             for col_idx, item in enumerate(row):
-                Label(container, text=item, width=col_widths[col_idx]).grid(row=row_idx, column=col_idx, sticky='', padx=5, pady=2)
+                Label(container, text=item, width=col_widths[col_idx]).grid(row=row_idx, column=col_idx, sticky='', padx=10, pady=2)
                 #Label(container, text=item).grid(row=row_idx, column=col_idx, sticky='', padx=5, pady=2)
                 
 
@@ -388,8 +389,11 @@ class NotepadApp:
         notebook = ttk.Notebook(frame_plot_settings_inner)
         notebook.grid(row=1, column=0, columnspan=5, sticky='news')
         
-        button_plot = Button(frame_plot_settings_inner, text='PLOT', command=self.plot_update)
+        button_plot = Button(frame_plot_settings_inner, text='PLOT', command=lambda :self.plot_update(preview=False))
         button_plot.grid(row=3, column=0, columnspan=5, sticky='news')
+
+        button_preview = Button(frame_plot_settings_inner, text='Preview', command=lambda :self.plot_update(preview=True))
+        button_preview.grid(row=4, column=0, columnspan=5, sticky='news')
 
         
         x_range_label = Label(frame_plot_settings_inner, text='X range')
@@ -491,12 +495,20 @@ class NotepadApp:
             line_width_entry.insert(0,1)
             dict_of_local_widgets['line_width'] = line_width_entry
 
+            grid_on_label = Label(tab, text='Grid on')
+            grid_on_label.grid(row=8, column=0, sticky='w', padx=10, pady=10)
+
+            var = BooleanVar()
+            grid_on_checkbutton = Checkbutton(tab, variable=var, width=5)
+            grid_on_checkbutton.grid(row=8, column=1, sticky='w', columnspan=4, padx=10, pady=10)
+            dict_of_local_widgets['grid_on'] = var
+
             hide_axis_label = Label(tab, text='Hide axis')
-            hide_axis_label.grid(row=8, column=0, sticky='w', padx=10, pady=10)
+            hide_axis_label.grid(row=9, column=0, sticky='w', padx=10, pady=10)
 
             var = BooleanVar()
             hide_axis_checkbutton = Checkbutton(tab, variable=var, width=5)
-            hide_axis_checkbutton.grid(row=8, column=1, sticky='w', columnspan=4, padx=10, pady=10)
+            hide_axis_checkbutton.grid(row=9, column=1, sticky='w', columnspan=4, padx=10, pady=10)
             dict_of_local_widgets['hide_axis'] = var
             
             #tab.grid_propagate(flag=False)
@@ -512,7 +524,7 @@ class NotepadApp:
                 print('   ' + key1, value1)
             print('\n\n')"""
         
-    def plot_update(self):
+    def plot_update(self, preview):
 
         selected_index = self.selected_object_plate.notebook_figures_selection.index(self.selected_object_plate.notebook_figures_selection.select())
         print("Selected tab index:", selected_index)
@@ -552,9 +564,22 @@ class NotepadApp:
             print('---------------------\n\n')
 
             self.selected_object_plate.figures[tab_text].update_axis(ax['name'], axis_label, legend_label, y_range_min, y_range_max, y_ax_number, color, line_width, hide_axis)
-            
-        self.selected_object_plate.figures[tab_text].show_figure() 
-    #add the first tab to the notebook
+        
+        frame_preview_height = self.selected_object_plate.frames['frame_preview'].winfo_height()
+        frame_preview_width = self.selected_object_plate.frames['frame_preview'].winfo_width()
+
+        fig = self.selected_object_plate.figures[tab_text].show_figure(preview, frame_preview_width-20, frame_preview_height-20)
+
+        if preview is True:
+            for widget in self.selected_object_plate.frames['frame_preview'].winfo_children():
+                widget.destroy()
+
+            canvas = FigureCanvasTkAgg(fig, master=self.selected_object_plate.frames['frame_preview'])
+            canvas.draw()
+        
+            canvas.get_tk_widget().pack()
+
+    
 
     def get_x_axis_range(self, tab_text, x_range_min, x_range_max):
         x_range_min_def = self.selected_object_plate.df_data.index.min()
